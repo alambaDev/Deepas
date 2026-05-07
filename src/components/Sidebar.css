@@ -1,0 +1,173 @@
+.sidebar {
+  width: 320px;
+  background: #254769;
+  width: 20%;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+  z-index: 1000;
+}
+
+.sidebar-header {
+  padding: 20px;
+  background: #074D91;
+  color: #FFF;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.accordion {
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+.accordion-header {
+  padding: 15px 20px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.3s;
+}
+
+.accordion-header:hover {
+  background-color: rgba(255,255,255,0.1);
+}
+
+.accordion-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.accordion-icon {
+  font-size: 0.8rem;
+}
+
+.accordion-content {
+  padding: 10px 20px 20px 20px;
+  background-color: rgba(0,0,0,0.1);
+}
+
+.data-item {
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: rgba(255,255,255,0.1);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.data-item:hover {
+  background-color: rgba(255,255,255,0.2);
+  transform: translateX(5px);
+}
+
+.data-item.active {
+  background-color: rgba(255,255,255,0.3);
+  border-left: 3px solid #ffd700;
+}
+
+.data-item-header {
+  margin-bottom: 5px;
+}
+
+.data-item-description {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.forecast-demo {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: rgba(255,255,255,0.15);
+  border-radius: 5px;
+}
+
+.forecast-demo h4 {
+  margin: 0 0 10px 0;
+  font-size: 0.9rem;
+}
+
+.forecast-details {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.forecast-details small {
+  font-size: 0.8rem;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 20px;
+  border-top: 1px solid rgba(255,255,255,0.2);
+  font-size: 0.85rem;
+}
+
+.sidebar-footer p {
+  margin-bottom: 5px;
+}
+
+.sidebar-footer small {
+  opacity: 0.7;
+}
+
+/* Add these styles to existing Sidebar.css */
+.forecast-search {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: rgba(255,255,255,0.15);
+  border-radius: 5px;
+}
+
+.forecast-search h4 {
+  margin: 0 0 10px 0;
+  font-size: 0.9rem;
+}
+
+.search-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.city-search-input {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  background-color: rgba(255,255,255,0.9);
+  font-size: 0.85rem;
+}
+
+.city-search-input:focus {
+  outline: none;
+  background-color: white;
+}
+
+.search-btn {
+  padding: 8px 12px;
+  background: #0a2642;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.search-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.search-hint {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  display: block;
+}

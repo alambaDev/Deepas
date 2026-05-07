@@ -1,0 +1,15 @@
+services:
+  react-app:
+    build: .
+    ports:
+      - "3005:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    stdin_open: true
+    restart: unless-stopped
+    tty: true
+    extra_hosts:
+      - "10.150.16.184:10.150.16.184"
