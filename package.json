@@ -7,6 +7,7 @@
     "http-proxy-middleware": "^2.0.9",
     "keycloak-js": "^26.2.4",
     "leaflet": "^1.9.4",
+    "ol": "^10.9.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",

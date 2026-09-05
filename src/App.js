@@ -1,33 +1,46 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Map from './components/Map';
 import Navbar from './components/Navbar';
 import ForecastCard from './components/ForecastCard';
 import TimeSeriesControl from './components/TimeSeriesControl';
 import { useAuth } from './contexts/AuthContext';
+import { TimeSeriesService } from './services/TimeSeriesService';
 import './App.css';
 
-// Import the TimeSeriesService
-import { TimeSeriesService } from './services/TimeSeriesService';
-
 function App() {
-  const { authenticated, loading: authLoading } = useAuth();
+  const { authenticated } = useAuth();
+
   const [activeLayer, setActiveLayer] = useState(null);
   const [forecastData, setForecastData] = useState(null);
   const [showForecast, setShowForecast] = useState(false);
+  const [locationPin, setLocationPin] = useState(null);
+  
+  const [showLayerCard, setShowLayerCard] = useState(false);
+
   const [showLoading, setShowLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [currentMessage, setCurrentMessage] = useState('Initializing...');
-  const progressIntervalRef = useRef(null);
-  const messageIntervalRef = useRef(null);
-  const startTimeRef = useRef(Date.now());
+
   const [timeSeriesConfig, setTimeSeriesConfig] = useState({
     isVisible: false,
     timeValues: [],
     currentIndex: 0,
     isLoading: false,
-    layerName: ''
+    layerName: '',
+    isPlaying: false,
+    activeLayerTimeSeries: null
   });
+
+  const progressIntervalRef = useRef(null);
+  const messageIntervalRef = useRef(null);
+  const startTimeRef = useRef(Date.now());
+
+  // Prevent duplicate requests
+  const loadingLayerRef = useRef(false);
+
+  // Prevent stale async responses
+  const requestIdRef = useRef(0);
 
   const loadingMessages = [
     'Initializing...',
@@ -42,93 +55,278 @@ function App() {
     'Almost ready...'
   ];
 
-  useEffect(() => {
-    // Clear any existing intervals
-    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-    if (messageIntervalRef.current) clearInterval(messageIntervalRef.current);
+  // Derive if time-series is visible for forecast card adjustment
+  const isTimeSeriesVisible = timeSeriesConfig.isVisible && timeSeriesConfig.activeLayerTimeSeries === activeLayer;
 
-    // Start progress counter
+  /*
+  ==========================================
+  LOADING SCREEN
+  ==========================================
+  */
+
+  useEffect(() => {
     progressIntervalRef.current = setInterval(() => {
-      setLoadingProgress(prev => {
-        const elapsed = Date.now() - startTimeRef.current;
-        const progress = Math.min((elapsed / 20000) * 100, 100);
-        return Math.floor(progress);
-      });
+      const elapsed = Date.now() - startTimeRef.current;
+      setLoadingProgress(
+        Math.min(Math.floor((elapsed / 20000) * 100), 100)
+      );
     }, 50);
 
-    // Start message rotator
     let messageIndex = 0;
+
     messageIntervalRef.current = setInterval(() => {
       messageIndex = (messageIndex + 1) % loadingMessages.length;
       setCurrentMessage(loadingMessages[messageIndex]);
     }, 2000);
 
-    // Force minimum 20 seconds loading
-    const minimumLoadTimer = setTimeout(() => {
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-      if (messageIntervalRef.current) clearInterval(messageIntervalRef.current);
-      setShowLoading(false);
+    const timer = setTimeout(() => {
+      clearInterval(progressIntervalRef.current);
+      clearInterval(messageIntervalRef.current);
       setLoadingProgress(100);
+      setShowLoading(false);
     }, 20000);
 
-    // Cleanup on unmount
     return () => {
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-      if (messageIntervalRef.current) clearInterval(messageIntervalRef.current);
-      clearTimeout(minimumLoadTimer);
+      clearInterval(progressIntervalRef.current);
+      clearInterval(messageIntervalRef.current);
+      clearTimeout(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  
+  /*
+  ==========================================
+  HANDLE Preview Card Toggle
+  ==========================================
+  */
+
+  const handleToggleLayerCard = (show) => {
+    setShowLayerCard(show);
+  };
+
+  const handleCloseCard = () => {
+    setShowLayerCard(false);
+  };
+
+  /*
+  ==========================================
+  HANDLE LOCATION FOUND (FORECAST PIN)
+  ==========================================
+  */
+
+  const handleLocationFound = useCallback((location) => {
+    console.log('📍 Location found callback:', location);
+    setLocationPin(location);
+  }, []);
+
+  /*
+  ==========================================
+  HANDLE LAYER SELECTION
+  ==========================================
+  */
+
+  const handleLayerSelect = useCallback(async (layer) => {
+    console.log(`📌 Layer selected: ${layer}`);
+
+    // Prevent duplicate loading
+    if (loadingLayerRef.current) {
+      console.log('Layer already loading...');
+      return;
+    }
+
+    setActiveLayer(layer);
+    
+    // Automatically show the info card when a layer is selected
+    setShowLayerCard(true);
+
+    // Fetch time series for the selected layer
+    loadingLayerRef.current = true;
+
+    const currentRequestId = ++requestIdRef.current;
+
+    setTimeSeriesConfig(prev => ({
+      ...prev,
+      isVisible: false,
+      timeValues: [],
+      currentIndex: 0,
+      isLoading: true,
+      layerName: `Loading ${layer} time series...`,
+      isPlaying: false,
+      activeLayerTimeSeries: layer
+    }));
+
+    try {
+      console.log(`🔄 Fetching time dimension values for ${layer}...`);
+
+      const timeValues = await TimeSeriesService.checkLayerTimeDimension(
+        layer,
+        'geonode',
+        '/geoserver'
+      );
+
+      // Ignore stale responses
+      if (currentRequestId !== requestIdRef.current) {
+        console.log('Ignoring stale response');
+        return;
+      }
+
+      if (Array.isArray(timeValues) && timeValues.length > 0) {
+        console.log(`✅ Loaded ${timeValues.length} timesteps for ${layer}`);
+
+        const displayNames = {
+          'water_depth': 'Water Depth',
+          'depth_max': 'Maximum Flood Depth',
+          'time_of_max_depth': 'Time of Maximum Flood Depth',
+          'exposed_infrastructure': 'Exposed Infrastructure'
+        };
+
+        setTimeSeriesConfig({
+          isVisible: true,
+          timeValues: timeValues,
+          currentIndex: 0,
+          isLoading: false,
+          layerName: `${displayNames[layer] || layer} (${timeValues.length} timesteps)`,
+          isPlaying: false,
+          activeLayerTimeSeries: layer
+        });
+      } else {
+        console.log(`ℹ️ No time dimension found for ${layer}`);
+
+        setTimeSeriesConfig({
+          isVisible: false,
+          timeValues: [],
+          currentIndex: 0,
+          isLoading: false,
+          layerName: '',
+          isPlaying: false,
+          activeLayerTimeSeries: null
+        });
+      }
+    } catch (error) {
+      console.error(`❌ Failed to load time series for ${layer}:`, error);
+
+      setTimeSeriesConfig({
+        isVisible: false,
+        timeValues: [],
+        currentIndex: 0,
+        isLoading: false,
+        layerName: '',
+        isPlaying: false,
+        activeLayerTimeSeries: null
+      });
+    } finally {
+      loadingLayerRef.current = false;
+    }
+  }, []);
+
+  /*
+  ==========================================
+  TIME SERIES EVENTS
+  ==========================================
+  */
+
+  const handleTimeChange = useCallback((index, timeValue) => {
+    if (index % 10 === 0) {
+      console.log(`⏱ Time index changed: ${index}`, timeValue);
+    }
+
+    setTimeSeriesConfig((prev) => ({
+      ...prev,
+      currentIndex: index
+    }));
+  }, []);
+
+  const handlePlayStateChange = useCallback((isPlaying) => {
+    setTimeSeriesConfig((prev) => {
+      if (prev.isPlaying === isPlaying) {
+        return prev;
+      }
+
+      console.log(`🎬 Animation ${isPlaying ? 'started' : 'paused'}`);
+
+      return {
+        ...prev,
+        isPlaying
+      };
+    });
+  }, []);
+
+  /*
+  ==========================================
+  FORECAST
+  ==========================================
+  */
+
+  const handleCloseForecast = () => {
+    setForecastData(null);
+    setShowForecast(false);
+    setLocationPin(null);
+  };
+
+  /*
+  ==========================================
+  LOADING SCREEN
+  ==========================================
+  */
 
   if (showLoading) {
     return (
       <div className="loading-container">
         <div className="loading-card">
           <h2>Flood Monitoring</h2>
-          
+
           <div className="loading-progress-container">
             <div className="loading-progress-bar">
-              <div 
-                className="loading-progress-fill" 
-                style={{ width: `${loadingProgress}%` }}
+              <div
+                className="loading-progress-fill"
+                style={{
+                  width: `${loadingProgress}%`
+                }}
               >
                 <div className="progress-shimmer"></div>
               </div>
             </div>
+
             <div className="loading-progress-text">
               {loadingProgress}%
             </div>
           </div>
-          
+
           <div className="loading-message">
             <i className="bi bi-arrow-repeat loading-spinner-small"></i>
             <span>{currentMessage}</span>
           </div>
-          
+
           <div className="loading-tips">
-            <small>Please wait while we securely connect you...</small>
-          </div>
-          
-          <div className="loading-steps">
-            {loadingMessages.slice(0, 5).map((_, idx) => (
-              <div 
-                key={idx}
-                className={`loading-step ${idx === Math.floor(loadingProgress / 20) ? 'active' : ''} ${idx < Math.floor(loadingProgress / 20) ? 'completed' : ''}`}
-              ></div>
-            ))}
+            <small>
+              Please wait while we securely connect you...
+            </small>
           </div>
         </div>
       </div>
     );
   }
 
+  /*
+  ==========================================
+  LOGIN SCREEN
+  ==========================================
+  */
+
   if (!authenticated) {
     return (
       <div className="login-container">
         <div className="login-card">
           <i className="bi bi-shield-lock-fill login-icon"></i>
+
           <h1>Flood Monitoring</h1>
+
           <p>Please log in to access the application</p>
-          <button onClick={() => window.location.reload()} className="login-button">
+
+          <button
+            onClick={() => window.location.reload()}
+            className="login-button"
+          >
             <i className="bi bi-box-arrow-in-right"></i>
             Login with Keycloak
           </button>
@@ -137,115 +335,47 @@ function App() {
     );
   }
 
-  // Updated handleLayerSelect to fetch real time values from GeoServer
-  const handleLayerSelect = async (layer) => {
-    setActiveLayer(layer);
-    
-    if (layer === 'water_depth') {
-      // Show loading state
-      setTimeSeriesConfig(prev => ({ 
-        ...prev, 
-        isLoading: true, 
-        isVisible: true,
-        layerName: 'Loading time series data from GeoServer...'
-      }));
-      
-      try {
-        // Fetch REAL time values from GeoServer (no hardcoded values)
-        console.log('🔄 Fetching time values from GeoServer...');
-        
-        const realTimeValues = await TimeSeriesService.checkLayerTimeDimension(
-          'geonode:water_depth',  // Layer name
-          'geonode',               // Workspace
-          'http://10.150.16.184/geoserver'  // GeoServer URL (using HTTP to avoid CORS)
-        );
-        
-        if (realTimeValues && realTimeValues.length > 0) {
-          console.log(`✅ Successfully loaded ${realTimeValues.length} real time values from GeoServer`);
-          console.log(`📅 Time range: ${realTimeValues[0]} to ${realTimeValues[realTimeValues.length - 1]}`);
-          
-          // Set the real time values
-          setTimeSeriesConfig({
-            isVisible: true,
-            timeValues: realTimeValues,
-            currentIndex: 0,
-            isLoading: false,
-            layerName: `Water Depth (${realTimeValues.length} timesteps)`
-          });
-        } else {
-          // No time values found
-          console.error('❌ No time values found for water_depth layer');
-          setTimeSeriesConfig({
-            isVisible: false,
-            timeValues: [],
-            currentIndex: 0,
-            isLoading: false,
-            layerName: ''
-          });
-          
-          // Optional: Show user-friendly message
-          alert('No time series data available for Water Depth layer. Please check GeoServer configuration.');
-        }
-      } catch (error) {
-        console.error('❌ Error loading time series data:', error);
-        setTimeSeriesConfig({
-          isVisible: false,
-          timeValues: [],
-          currentIndex: 0,
-          isLoading: false,
-          layerName: ''
-        });
-        
-        // Optional: Show error message to user
-        alert('Failed to load time series data. Please check if GeoServer is accessible.');
-      }
-    } else {
-      // Hide time series control for other layers
-      setTimeSeriesConfig(prev => ({ ...prev, isVisible: false }));
-    }
-  };
-
-  const handleTimeChange = (index, timeValue) => {
-    console.log(`Time changed to index ${index}: ${timeValue}`);
-    setTimeSeriesConfig(prev => ({
-      ...prev,
-      currentIndex: index
-    }));
-  };
-
-  const handlePlayStateChange = (isPlaying) => {
-    console.log(`Animation is ${isPlaying ? 'playing' : 'paused'}`);
-  };
-
-  const handleCloseForecast = () => {
-    setShowForecast(false);
-    setForecastData(null);
-  };
+  /*
+  ==========================================
+  MAIN APP
+  ==========================================
+  */
 
   return (
     <div className="app">
       <Navbar />
+
       <div className="main-container">
-        <Sidebar 
+        <Sidebar
           activeLayer={activeLayer}
           setActiveLayer={handleLayerSelect}
           forecastData={forecastData}
           setForecastData={setForecastData}
           setShowForecast={setShowForecast}
+          onToggleLayerCard={handleToggleLayerCard}
+          showLayerCard={showLayerCard}
         />
-        <Map 
-          activeLayer={activeLayer} 
+
+        <Map
+          activeLayer={activeLayer}
           timeSeriesConfig={timeSeriesConfig}
+          locationPin={locationPin}
+          showLayerCard={showLayerCard}
+          onCloseCard={handleCloseCard}
         />
       </div>
+
       {showForecast && forecastData && (
-        <ForecastCard 
-          forecastData={forecastData} 
+        <ForecastCard
+          forecastData={forecastData}
           onClose={handleCloseForecast}
+          onLocationFound={handleLocationFound}
+          isTimeSeriesVisible={isTimeSeriesVisible}
         />
       )}
-      <TimeSeriesControl 
-        isVisible={timeSeriesConfig.isVisible}
+
+      <TimeSeriesControl
+        isVisible={timeSeriesConfig.isVisible && timeSeriesConfig.activeLayerTimeSeries === activeLayer}
         timeValues={timeSeriesConfig.timeValues}
         onTimeChange={handleTimeChange}
         onPlayStateChange={handlePlayStateChange}

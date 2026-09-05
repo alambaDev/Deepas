@@ -312,3 +312,18 @@
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
+
+/* Prevent layer flickering during animation */
+.leaflet-tile-container {
+  will-change: transform;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.leaflet-tile {
+  transition: opacity 0.1s ease-in-out;
+}
+
+/* Keep tiles visible during loading */
+.leaflet-tile-loaded {
+  opacity: 1 !important;
+}

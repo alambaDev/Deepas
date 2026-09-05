@@ -1,5 +1,7 @@
 FROM node:18-alpine
 
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
 WORKDIR /app
 
 # Copy package files first for better layer caching

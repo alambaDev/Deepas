@@ -3,8 +3,7 @@
   top: 80px;
   right: 5px;
   width: 400px;
-  max-height: 95vh;
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  border: 2px solid #FFF;
   color: white;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
@@ -29,7 +28,7 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 15px;
-  background: rgba(0,0,0,0.2);
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   border-bottom: 1px solid rgba(255,255,255,0.2);
 }
 
@@ -65,7 +64,8 @@
 
 .forecast-card-body {
   padding: 15px;
-  max-height: calc(80vh - 70px);
+  background: rgba(30,60,114,0.7);
+  max-height: calc(100vh - 160px);
   overflow-y: auto;
 }
 
@@ -74,6 +74,11 @@
   margin-bottom: 15px;
   padding-bottom: 10px;
   border-bottom: 1px solid rgba(255,255,255,0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .update-time {
@@ -83,29 +88,119 @@
   border-radius: 20px;
 }
 
-.forecast-days {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.instruction-hint {
+  font-size: 0.7rem;
+  background: rgba(255,255,255,0.15);
+  padding: 4px 8px;
+  border-radius: 20px;
 }
 
-.forecast-day {
-  background: rgba(255,255,255,0.1);
+.warning-badge {
+  background: rgba(255, 100, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+}
+
+/* Flip Card Container */
+.forecast-card-container {
+  background-color: transparent;
+  height: auto;
+  min-height: 180px;
+  perspective: 1000px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+
+.forecast-card-container.flipped {
+  z-index: 10;
+  margin-bottom: 290px;
+}
+
+.forecast-card-flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.forecast-card-container.flipped .forecast-card-flipper {
+  transform: rotateY(180deg);
+}
+
+/* Front and back faces */
+.forecast-card-front,
+.forecast-card-back {
+  position: relative;
+  width: 100%;
+  backface-visibility: hidden;
   border-radius: 8px;
   padding: 10px;
-  transition: transform 0.2s;
+  transition: all 0.3s;
 }
 
-.forecast-day:hover {
+.forecast-card-front {
+  background: rgba(255,255,255,0.1);
+  transform: rotateY(0deg);
+  min-height: 180px;
+}
+
+.forecast-card-front:hover {
   transform: translateX(-5px);
   background: rgba(255,255,255,0.15);
 }
 
+.forecast-card-back {
+  background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+  transform: rotateY(180deg);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 12px;
+  min-height: 450px;
+  max-height: 450px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Front card active states */
+.forecast-card-front.active-day {
+  background: rgba(255, 0, 0, 0.3);
+  border: 2px solid #ff0000;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+}
+
+.forecast-card-front.current-day {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.forecast-card-front.current-day.active-day {
+  background: rgba(255, 0, 0, 0.4);
+}
+
+/* Daily forecast card content */
 .forecast-day-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 8px;
   font-size: 0.85rem;
+}
+
+.today-badge {
+  background: #ffd700;
+  color: #1e3c72;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 0.65rem;
+  font-weight: bold;
+  margin-left: 8px;
 }
 
 .forecast-day-icon {
@@ -144,15 +239,154 @@
   gap: 8px;
 }
 
-.forecast-footer {
-  margin-top: 15px;
-  padding-top: 10px;
+.flip-hint {
   text-align: center;
-  border-top: 1px solid rgba(255,255,255,0.2);
   font-size: 0.65rem;
-  opacity: 0.7;
+  opacity: 0.6;
+  margin-top: 8px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(255,255,255,0.2);
 }
 
+/* Back card header */
+.back-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(255,255,255,0.3);
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.back-close {
+  cursor: pointer;
+  font-size: 1.2rem;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+  padding: 0 5px;
+}
+
+.back-close:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Hourly Table Styles */
+.hourly-table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.hourly-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.hourly-table thead {
+  background: rgba(0,0,0,0.9);
+  position: sticky;
+  top: 0;
+}
+
+.hourly-table th {
+  padding: 8px 6px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.7rem;
+  color: #ffd700;
+  border-bottom: 2px solid rgba(255,255,255,0.2);
+}
+
+.hourly-table td {
+  padding: 8px 6px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  vertical-align: middle;
+}
+
+.hourly-table tbody tr:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.hourly-table .current-hour-row {
+  background: rgba(255, 215, 0, 0.2);
+  border-left: 3px solid #ffd700;
+  font-weight: bold;
+}
+
+.hour-time {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.now-badge {
+  display: inline-block;
+  background: #ffd700;
+  color: #1e3c72;
+  font-size: 0.6rem;
+  padding: 2px 5px;
+  border-radius: 10px;
+  margin-left: 6px;
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.temp-cell {
+  font-weight: bold;
+  color: #ffd700;
+  font-size: 0.85rem;
+}
+
+.rain-cell {
+  color: #87ceeb;
+}
+
+/* Cloud cover bar */
+.cloud-cover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.cloud-bar {
+  width: 50px;
+  height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.cloud-fill {
+  height: 100%;
+  background: #87ceeb;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* Table responsive */
+.table-responsive {
+  overflow-x: auto;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+/* Loading states */
 .loading-spinner {
   width: 40px;
   height: 40px;
@@ -163,8 +397,41 @@
   margin: 20px auto;
 }
 
+.small-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 10px;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.loading-hourly {
+  text-align: center;
+  padding: 30px;
+}
+
+/* No data states */
+.no-hourly-data {
+  text-align: center;
+  padding: 30px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+
+.no-hourly-data p {
+  margin: 0 0 5px 0;
+  color: rgba(255,255,255,0.8);
+}
+
+.no-hourly-data small {
+  font-size: 0.7rem;
+  opacity: 0.6;
 }
 
 .error-hint {
@@ -173,23 +440,57 @@
   opacity: 0.8;
 }
 
-/* Scrollbar styling */
-.forecast-card-body::-webkit-scrollbar {
-  width: 6px;
+/* Footer */
+.forecast-footer {
+  margin-top: 15px;
+  padding-top: 10px;
+  text-align: center;
+  border-top: 1px solid rgba(255,255,255,0.2);
+  font-size: 0.65rem;
+  opacity: 0.7;
 }
 
-.forecast-card-body::-webkit-scrollbar-track {
+/* Scrollbar styling */
+.forecast-card-body::-webkit-scrollbar,
+.table-responsive::-webkit-scrollbar,
+.hourly-table-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.forecast-card-body::-webkit-scrollbar-track,
+.table-responsive::-webkit-scrollbar-track,
+.hourly-table-container::-webkit-scrollbar-track {
   background: rgba(255,255,255,0.1);
   border-radius: 3px;
 }
 
-.forecast-card-body::-webkit-scrollbar-thumb {
+.forecast-card-body::-webkit-scrollbar-thumb,
+.table-responsive::-webkit-scrollbar-thumb,
+.hourly-table-container::-webkit-scrollbar-thumb {
   background: rgba(255,255,255,0.3);
   border-radius: 3px;
 }
 
-.forecast-card-body::-webkit-scrollbar-thumb:hover {
+.forecast-card-body::-webkit-scrollbar-thumb:hover,
+.table-responsive::-webkit-scrollbar-thumb:hover,
+.hourly-table-container::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,0.5);
+}
+
+/* Back card scrollbar */
+.forecast-card-back::-webkit-scrollbar {
+  width: 4px;
+}
+
+.forecast-card-back::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+}
+
+.forecast-card-back::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 3px;
 }
 
 /* Mobile responsive */
@@ -199,5 +500,31 @@
     right: 5%;
     left: 5%;
     top: 60px;
+  }
+  
+  .hourly-table {
+    font-size: 0.65rem;
+  }
+  
+  .hourly-table th,
+  .hourly-table td {
+    padding: 6px 4px;
+  }
+  
+  .cloud-bar {
+    width: 35px;
+  }
+  
+  .now-badge {
+    font-size: 0.5rem;
+    padding: 1px 3px;
+  }
+  
+  .forecast-card-container.flipped {
+    margin-bottom: 350px;
+  }
+  
+  .forecast-card-back {
+    max-height: 400px;
   }
 }

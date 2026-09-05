@@ -1,12 +1,14 @@
 .sidebar {
-  width: 320px;
+  width: 400px;
   background: #254769;
-  width: 20%;
   color: white;
   display: flex;
   flex-direction: column;
   box-shadow: 2px 0 10px rgba(0,0,0,0.1);
   z-index: 1000;
+  height: calc(100vh - 70px); /* Fixed height */
+  position: relative;
+  overflow: hidden; /* Prevents overall sidebar overflow */
 }
 
 .sidebar-header {
@@ -14,6 +16,7 @@
   background: #074D91;
   color: #FFF;
   border-bottom: 1px solid rgba(255,255,255,0.2);
+  flex-shrink: 0; /* Prevents header from shrinking */
 }
 
 .sidebar-header h2 {
@@ -21,8 +24,80 @@
   font-size: 1.3rem;
 }
 
+/* Main content area that will scroll */
+.sidebar-content {
+  flex: 1;
+  overflow-y: none;
+  overflow-x: none;
+  min-height: 0; /* Critical for flex scrolling */
+  padding-bottom: 10px; /* Add some padding at the bottom */
+}
+
+/* Custom scrollbar for better appearance */
+.sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.region-panel {
+  padding: 10px;
+  background: white;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+
+.region-panel span:last-child {
+  color: #333;
+  font-weight: 300;
+}
+
 .accordion {
   border-bottom: 1px solid rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+
+.region-result {
+  color: #333;
+  padding: 10px 5px 5px 5px;
+  margin-top: 10px;
+}
+
+.province-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background-color: white;
+  color: #333;
+  cursor: pointer;
+}
+
+.province-select:focus {
+  outline: none;
+  border-color: #074D91;
+}
+
+.selected-province-info {
+  margin-top: 8px;
+  padding: 5px;
+  background-color: #e8f4f8;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  color: #074D91;
+  font-weight: 500;
 }
 
 .accordion-header {
@@ -50,6 +125,23 @@
 .accordion-content {
   padding: 10px 20px 20px 20px;
   background-color: rgba(0,0,0,0.1);
+  max-height: 420px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar for accordion content */
+.accordion-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.accordion-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.accordion-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
 }
 
 .data-item {
@@ -59,6 +151,10 @@
   border-radius: 5px;
   cursor: pointer;
   transition: all 0.3s;
+}
+
+.data-item:last-child {
+  margin-bottom: 0;
 }
 
 .data-item:hover {
@@ -80,45 +176,6 @@
   opacity: 0.8;
 }
 
-.forecast-demo {
-  margin-top: 15px;
-  padding: 10px;
-  background-color: rgba(255,255,255,0.15);
-  border-radius: 5px;
-}
-
-.forecast-demo h4 {
-  margin: 0 0 10px 0;
-  font-size: 0.9rem;
-}
-
-.forecast-details {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin-top: 8px;
-}
-
-.forecast-details small {
-  font-size: 0.8rem;
-}
-
-.sidebar-footer {
-  margin-top: auto;
-  padding: 20px;
-  border-top: 1px solid rgba(255,255,255,0.2);
-  font-size: 0.85rem;
-}
-
-.sidebar-footer p {
-  margin-bottom: 5px;
-}
-
-.sidebar-footer small {
-  opacity: 0.7;
-}
-
-/* Add these styles to existing Sidebar.css */
 .forecast-search {
   margin-top: 15px;
   padding: 10px;
@@ -171,3 +228,57 @@
   opacity: 0.7;
   display: block;
 }
+
+.sidebar-footer {
+  padding: 15px 20px;
+  border-top: 1px solid rgba(255,255,255,0.2);
+  background: #074D91;
+  color: #FFF;
+  flex-shrink: 0;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.layer-button {
+  width: 100%;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.active-layer-button {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4a 100%);
+  color: #1a3a5c;
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+
+.active-layer-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  background: linear-gradient(135deg, #ffed4a 0%, #ffd700 100%);
+}
+
+.active-layer-button:active {
+  transform: translateY(0);
+}
+
+.inactive-layer-span {
+  width: 100%;
+  padding: 10px 15px;
+  color: #FFF;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  display: block;
+}
+

@@ -1,5 +1,5 @@
 const keycloak = new Keycloak({
-    url: 'http://localhost:8088',
+    url: 'http://localhost:8080',
     realm: 'desarealm',
     clientId: 'laravel-app'
 });
@@ -15,8 +15,6 @@ keycloak.init({
         keycloak.login();
         return;
     }
-
-    console.log('User authenticated');
     
     loadUserAndPermissions();
 })
@@ -37,8 +35,6 @@ function loadUserAndPermissions() {
     }
     
     const allRoles = [...realmRoles, ...clientRoles, ...allClientRoles];
-    
-    console.log("All user roles:", allRoles);
     
     const canDownload = allRoles.includes('file-download');
     const canRestrict = allRoles.includes('file-restrict');

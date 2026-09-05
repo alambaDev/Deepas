@@ -1,3 +1,4 @@
+// contexts/AuthContext.js - Fixed version
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import keycloak from '../config/keycloak';
 
@@ -58,31 +59,6 @@ export const AuthProvider = ({ children }) => {
         return allRoles;
     }, []);
 
-    const setupTokenRefresh = useCallback(() => {
-        const refreshInterval = setInterval(() => {
-            if (keycloak.isTokenExpired(30)) {
-                keycloak.updateToken(30)
-                    .then(refreshed => {
-                        if (refreshed) {
-                            console.log('Token refreshed successfully');
-                            setToken(keycloak.token);
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Failed to refresh token:', err);
-                        clearInterval(refreshInterval);
-                        logout();
-                    });
-            }
-        }, 5000);
-        
-        return refreshInterval;
-    }, []);
-
-    const login = () => {
-        keycloak.login();
-    };
-
     const logout = useCallback(() => {
         console.log('Initiating logout...');
         localStorage.clear();
@@ -102,6 +78,31 @@ export const AuthProvider = ({ children }) => {
         });
     }, []);
 
+    const setupTokenRefresh = useCallback(() => {
+        const refreshInterval = setInterval(() => {
+            if (keycloak.isTokenExpired(30)) {
+                keycloak.updateToken(30)
+                    .then(refreshed => {
+                        if (refreshed) {
+                            console.log('Token refreshed successfully');
+                            setToken(keycloak.token);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Failed to refresh token:', err);
+                        clearInterval(refreshInterval);
+                        logout(); // logout is used here
+                    });
+            }
+        }, 5000);
+        
+        return refreshInterval;
+    }, [logout]); // Added logout to dependencies
+
+    const login = () => {
+        keycloak.login();
+    };
+
     useEffect(() => {
         const initKeycloak = async () => {
             try {
@@ -116,7 +117,14 @@ export const AuthProvider = ({ children }) => {
                     setToken(keycloak.token);
                     await loadUserInfo();
                     getRoles();
-                    setupTokenRefresh();
+                    const refreshInterval = setupTokenRefresh(); // Store the interval
+                    
+                    // Cleanup function for the interval
+                    return () => {
+                        if (refreshInterval) {
+                            clearInterval(refreshInterval);
+                        }
+                    };
                 } else {
                     console.log('Not authenticated, redirecting to login');
                     keycloak.login();
@@ -129,7 +137,7 @@ export const AuthProvider = ({ children }) => {
         };
         
         initKeycloak();
-    }, [loadUserInfo, getRoles, setupTokenRefresh]);
+    }, [loadUserInfo, getRoles, setupTokenRefresh]); // Added all dependencies
 
     const value = {
         authenticated,

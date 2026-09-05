@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+// TimeSeriesControl.js - Update to show current layer info
+import React, { useState, useEffect, useRef } from 'react';
 import './TimeSeriesControl.css';
 
 const TimeSeriesControl = ({ 
@@ -10,128 +11,155 @@ const TimeSeriesControl = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [animationSpeed, setAnimationSpeed] = useState(500);
+  const [animationSpeed, setAnimationSpeed] = useState(1000);
   const [isDragging, setIsDragging] = useState(false);
-  const animationRef = useRef(null);
-  const isUpdatingFromProps = useRef(false);
-  const previousTimeValuesRef = useRef(timeValues);
+  
+  const intervalRef = useRef(null);
+  const timeValuesRef = useRef(timeValues);
+  const onTimeChangeRef = useRef(onTimeChange);
+  const onPlayStateChangeRef = useRef(onPlayStateChange);
+  const isPlayingRef = useRef(false);
+  const currentIndexRef = useRef(0);
 
-  const handleTimeChangeCallback = useCallback((index, timeValue) => {
-    if (onTimeChange) onTimeChange(index, timeValue);
+  // Update refs when props change
+  useEffect(() => {
+    timeValuesRef.current = timeValues;
+  }, [timeValues]);
+
+  useEffect(() => {
+    onTimeChangeRef.current = onTimeChange;
   }, [onTimeChange]);
 
-  const handlePlayStateChangeCallback = useCallback((playing) => {
-    if (onPlayStateChange) onPlayStateChange(playing);
+  useEffect(() => {
+    onPlayStateChangeRef.current = onPlayStateChange;
   }, [onPlayStateChange]);
 
-  // Sync play state
   useEffect(() => {
-    if (!isUpdatingFromProps.current) {
-      handlePlayStateChangeCallback(isPlaying);
-    }
-  }, [isPlaying, handlePlayStateChangeCallback]);
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
-  // Update when timeValues change
   useEffect(() => {
-    if (timeValues && timeValues.length > 0 && timeValues !== previousTimeValuesRef.current) {
-      previousTimeValuesRef.current = timeValues;
-      isUpdatingFromProps.current = true;
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  // Reset when timeValues change (new layer selected)
+  useEffect(() => {
+    if (timeValues && timeValues.length > 0) {
+      // Reset index to 0 for new layer
       setCurrentIndex(0);
-      handleTimeChangeCallback(0, timeValues[0]);
-      isUpdatingFromProps.current = false;
+      if (onTimeChangeRef.current) {
+        onTimeChangeRef.current(0, timeValues[0]);
+      }
+      // Stop animation when switching layers
+      if (isPlayingRef.current) {
+        setIsPlaying(false);
+        if (onPlayStateChangeRef.current) {
+          onPlayStateChangeRef.current(false);
+        }
+      }
     }
-  }, [timeValues, handleTimeChangeCallback]);
+  }, [timeValues]);
 
-  // Animation loop
+  // Handle animation with setInterval
   useEffect(() => {
-    if (!isPlaying || !timeValues || timeValues.length === 0) {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
-      }
-      return;
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
-    
-    let lastUpdate = 0;
-    
-    const animate = (timestamp) => {
-      if (!lastUpdate) {
-        lastUpdate = timestamp;
-        animationRef.current = requestAnimationFrame(animate);
-        return;
-      }
-      
-      const elapsed = timestamp - lastUpdate;
-      
-      if (elapsed >= animationSpeed) {
-        setCurrentIndex(prevIndex => {
-          if (prevIndex >= timeValues.length - 1) {
-            // End of animation
-            setIsPlaying(false);
-            handlePlayStateChangeCallback(false);
-            if (animationRef.current) {
-              cancelAnimationFrame(animationRef.current);
-              animationRef.current = null;
-            }
-            return prevIndex;
+
+    if (isPlaying && timeValuesRef.current && timeValuesRef.current.length > 0) {
+      intervalRef.current = setInterval(() => {
+        const currentIdx = currentIndexRef.current;
+        const timeVals = timeValuesRef.current;
+        
+        if (!timeVals || timeVals.length === 0) {
+          return;
+        }
+        
+        let nextIndex = currentIdx + 1;
+        
+        if (nextIndex >= timeVals.length) {
+          // Stop animation at the end
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
           }
-          
-          const nextIndex = prevIndex + 1;
-          const newTime = timeValues[nextIndex];
-          
-          if (!isDragging && !isUpdatingFromProps.current) {
-            handleTimeChangeCallback(nextIndex, newTime);
+          setIsPlaying(false);
+          if (onPlayStateChangeRef.current) {
+            onPlayStateChangeRef.current(false);
           }
-          
-          lastUpdate = timestamp;
-          return nextIndex;
-        });
-      }
-      
-      animationRef.current = requestAnimationFrame(animate);
-    };
-    
-    animationRef.current = requestAnimationFrame(animate);
-    
+          return;
+        }
+        
+        setCurrentIndex(nextIndex);
+        if (onTimeChangeRef.current && !isDragging) {
+          onTimeChangeRef.current(nextIndex, timeVals[nextIndex]);
+        }
+      }, animationSpeed);
+    }
+
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [isPlaying, timeValues, animationSpeed, handleTimeChangeCallback, handlePlayStateChangeCallback, isDragging]);
+  }, [isPlaying, animationSpeed, isDragging]);
 
   const handlePlay = () => {
-    if (currentIndex >= timeValues.length - 1) {
-      isUpdatingFromProps.current = true;
+    const timeVals = timeValuesRef.current;
+    if (!timeVals || timeVals.length === 0) return;
+    
+    if (currentIndexRef.current >= timeVals.length - 1) {
       setCurrentIndex(0);
-      handleTimeChangeCallback(0, timeValues[0]);
-      isUpdatingFromProps.current = false;
+      if (onTimeChangeRef.current) {
+        onTimeChangeRef.current(0, timeVals[0]);
+      }
     }
+    
     setIsPlaying(true);
+    if (onPlayStateChangeRef.current) {
+      onPlayStateChangeRef.current(true);
+    }
   };
 
   const handlePause = () => {
     setIsPlaying(false);
+    if (onPlayStateChangeRef.current) {
+      onPlayStateChangeRef.current(false);
+    }
   };
 
   const handleStop = () => {
+    const timeVals = timeValuesRef.current;
+    if (!timeVals || timeVals.length === 0) return;
+    
     setIsPlaying(false);
-    isUpdatingFromProps.current = true;
+    if (onPlayStateChangeRef.current) {
+      onPlayStateChangeRef.current(false);
+    }
+    
     setCurrentIndex(0);
-    handleTimeChangeCallback(0, timeValues[0]);
-    isUpdatingFromProps.current = false;
+    if (onTimeChangeRef.current) {
+      onTimeChangeRef.current(0, timeVals[0]);
+    }
   };
 
   const handleSliderChange = (e) => {
-    const index = parseInt(e.target.value);
-    isUpdatingFromProps.current = true;
-    setCurrentIndex(index);
-    handleTimeChangeCallback(index, timeValues[index]);
-    isUpdatingFromProps.current = false;
+    const timeVals = timeValuesRef.current;
+    if (!timeVals || timeVals.length === 0) return;
     
-    if (isPlaying) {
+    const index = parseInt(e.target.value);
+    setCurrentIndex(index);
+    if (onTimeChangeRef.current) {
+      onTimeChangeRef.current(index, timeVals[index]);
+    }
+    
+    if (isPlayingRef.current) {
       setIsPlaying(false);
+      if (onPlayStateChangeRef.current) {
+        onPlayStateChangeRef.current(false);
+      }
     }
   };
 
@@ -141,54 +169,73 @@ const TimeSeriesControl = ({
 
   const formatDate = (isoString) => {
     if (!isoString) return 'No date';
-    const date = new Date(isoString);
-    return date.toLocaleString('en-ZA', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZone: 'UTC',
-      hour12: false
-    });
+    try {
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) {
+        return isoString;
+      }
+      return date.toLocaleString('en-ZA', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'UTC',
+        hour12: false
+      });
+    } catch (error) {
+      return isoString;
+    }
   };
 
-  const getProgressPercentage = () => {
-    if (!timeValues || timeValues.length === 0) return 0;
-    return (currentIndex / (timeValues.length - 1)) * 100;
-  };
-
+  // Don't render if not visible or no time values
   if (!isVisible || !timeValues || timeValues.length === 0) {
     return null;
   }
 
   return (
-    <div className="time-series-control">
-      <div className="control-header">
-        <div className="layer-info">
-          <strong>{layerName || 'Time Series Layer'}</strong>
+    <div className="time-series-control">  
+
+      <div className="controls-row">
+        <div className="control-buttons">
+          <button 
+            onClick={handlePlay} 
+            disabled={isPlaying} 
+            className="control-btn play-btn"
+            title="Play animation"
+          >
+            ▶ Play
+          </button>
+          <button 
+            onClick={handlePause} 
+            disabled={!isPlaying} 
+            className="control-btn pause-btn"
+            title="Pause animation"
+          >
+            ⏸ Pause
+          </button>
+          <button 
+            onClick={handleStop} 
+            className="control-btn stop-btn"
+            title="Stop and reset to beginning"
+          >
+            ⏹ Stop
+          </button>
         </div>
-        <div className="time-info">
-          <div className="current-time">
-            <strong>Current:</strong> {formatDate(timeValues[currentIndex])}
-          </div>
-          <div className="time-range">
-            <strong>Range:</strong> {formatDate(timeValues[0])} → {formatDate(timeValues[timeValues.length - 1])}
-          </div>
+        
+        <div className="speed-control">
+          <span className="speed-label">Animation Speed:</span>
+          <input
+            type="range"
+            min="100"
+            max="2000"
+            step="100"
+            value={animationSpeed}
+            onChange={handleSpeedChange}
+            className="speed-slider"
+          />
+          <span className="speed-value">{animationSpeed}ms</span>
         </div>
-      </div>
-      
-      <div className="control-buttons">
-        <button onClick={handlePlay} disabled={isPlaying} className="control-btn play-btn">
-          ▶ Play
-        </button>
-        <button onClick={handlePause} disabled={!isPlaying} className="control-btn pause-btn">
-          ⏸ Pause
-        </button>
-        <button onClick={handleStop} className="control-btn stop-btn">
-          ⏹ Stop
-        </button>
       </div>
       
       <div className="slider-container">
@@ -210,23 +257,8 @@ const TimeSeriesControl = ({
         </div>
       </div>
       
-      <div className="control-footer">
-        <div className="speed-control">
-          <span>Animation Speed:</span>
-          <input
-            type="range"
-            min="100"
-            max="2000"
-            step="100"
-            value={animationSpeed}
-            onChange={handleSpeedChange}
-            className="speed-slider"
-          />
-          <span className="speed-value">{animationSpeed}ms</span>
-        </div>
-        <div className="time-value-counter">
-          {currentIndex + 1} / {timeValues.length} timesteps
-        </div>
+      <div className="time-value-counter">
+        <span className="current-time">Current: {formatDate(timeValues[currentIndex])}</span>
       </div>
     </div>
   );
